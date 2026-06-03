@@ -1,0 +1,2135 @@
+{
+  "info": {
+    "_postman_id": "be33ec4f-c2e6-4d6e-9056-c9b8285d1130",
+    "name": "Padang Dalam Genggaman Copy",
+    "description": "# Padang Dalam Genggaman — API Documentation\n\nDokumentasi API lengkap untuk aplikasi **Padang Dalam Genggaman**.\n\n**Base URL:** `{{base_url}}/api`\n\n---\n\n## Autentikasi\nGunakan **Bearer Token** dari response login/register:\n```\nAuthorization: Bearer {{token}}\n```\nToken otomatis tersimpan ke variable `{{token}}` setelah login/register.\n\n---\n\n## Role & Akses\n| Role | Akses |\n|---|---|\n| *(belum login)* | Endpoint publik saja |\n| `kontributor` | + Submit & kelola lokasi sendiri |\n| `operator` | + Approval, kelola event & pengaduan |\n| `admin` | + Kelola kategori & user |\n| `super_admin` | Full akses |\n\n---\n\n## Catatan Penting untuk Mobile Dev\n- Semua user yang **register otomatis jadi kontributor**\n- Field `geometry` di navigasi adalah **encoded polyline** — decode pakai library polyline\n- Field `tipe` di langkah navigasi: `0`=lurus, `1`=kanan, `2`=kiri, `3`=kanan tajam, `10`=tiba, `11`=mulai, `12`=tetap jalur\n- Saat `prompt_review: true` di response tiba → tampilkan popup rating\n- Radius tiba default **100 meter** dari koordinat lokasi\n- Upload foto pakai `form-data`, bukan JSON\n- Max foto per lokasi: **5 foto**, max ukuran: **2MB per foto**\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48475796",
+    "_collection_link": "https://go.postman.co/collection/48475796-be33ec4f-c2e6-4d6e-9056-c9b8285d1130?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  console.log('Token saved:', res.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"budi@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"no_hp\": \"08123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "**POST /api/auth/register**\n\nDaftarkan akun baru. Langsung mengembalikan token.\n\n**Validasi:**\n- `name` — wajib, maks 255 karakter\n- `email` — wajib, unik, format email\n- `password` — wajib, min 8 karakter, harus ada `password_confirmation`\n- `no_hp` — opsional, maks 20 karakter\n\n**Response 201:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Registrasi berhasil\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"Budi Santoso\",\n      \"email\": \"budi@example.com\",\n      \"role\": \"kontributor\",\n      \"no_hp\": \"08123456789\",\n      \"foto\": null,\n      \"created_at\": \"2025-01-01T00:00:00.000000Z\"\n    },\n    \"token\": \"1|abcdefgh...\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  console.log('Token saved:', res.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**POST /api/auth/login**\n\nLogin dan dapatkan Bearer Token. Token lama akan otomatis dihapus.\n\n**Script otomatis:** Token disimpan ke variable `{{token}}` setelah login berhasil.\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Login berhasil\",\n  \"data\": {\n    \"user\": { \"id\": 1, \"name\": \"Budi Santoso\", \"role\": \"kontributor\", ... },\n    \"token\": \"1|abcdefgh...\"\n  }\n}\n```\n\n**Error 422** jika email/password salah."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**POST /api/auth/logout** 🔒 Auth required\n\nHapus token yang sedang aktif (logout dari device ini saja).\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Logout berhasil\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "**GET /api/auth/me** 🔒 Auth required\n\nAmbil data profil user yang sedang login.\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Budi Santoso\",\n    \"email\": \"budi@example.com\",\n    \"role\": \"kontributor\",\n    \"no_hp\": \"08123456789\",\n    \"foto\": \"http://localhost:8000/storage/foto-profil/xxx.jpg\",\n    \"created_at\": \"2025-01-01T00:00:00.000000Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Budi Updated",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "no_hp",
+                  "value": "08199999999",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "description": "Opsional, image, maks 2MB",
+                  "value": null
+                },
+                {
+                  "key": "password",
+                  "value": "newpassword123",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "password_confirmation",
+                  "value": "newpassword123",
+                  "type": "text",
+                  "description": "Wajib jika isi password"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "**PUT /api/auth/profile** 🔒 Auth required\n\nUpdate profil user. Semua field opsional (kirim yang ingin diubah saja).\nGunakan `form-data` jika upload foto, `raw JSON` jika tidak.\n\n**Field:**\n- `name` — string, maks 255\n- `no_hp` — string, maks 20\n- `foto` — file image, maks 2MB\n- `password` + `password_confirmation` — min 8 karakter\n\n**Response 200:** Mengembalikan data user yang sudah diperbarui."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Lokasi (Publik)",
+      "item": [
+        {
+          "name": "List Lokasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lokasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lokasi"
+              ],
+              "query": [
+                {
+                  "key": "kategori_id",
+                  "value": "1",
+                  "description": "Filter by ID kategori",
+                  "disabled": true
+                },
+                {
+                  "key": "kecamatan_id",
+                  "value": "1",
+                  "description": "Filter by ID kecamatan",
+                  "disabled": true
+                },
+                {
+                  "key": "kelurahan_id",
+                  "value": "1",
+                  "description": "Filter by ID kelurahan",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "pantai",
+                  "description": "Cari by nama tempat",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_by",
+                  "value": "rating_avg",
+                  "description": "nama_tempat | rating_avg | jumlah_kunjungan | created_at",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Default: 15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/lokasi** — Publik\n\nList semua lokasi yang sudah disetujui dengan pagination.\n\n**Query Params (semua opsional):**\n| Param | Tipe | Keterangan |\n|---|---|---|\n| `kategori_id` | integer | Filter by kategori |\n| `kecamatan_id` | integer | Filter by kecamatan |\n| `kelurahan_id` | integer | Filter by kelurahan |\n| `search` | string | Cari by nama tempat |\n| `sort_by` | string | `nama_tempat`, `rating_avg`, `jumlah_kunjungan`, `created_at` |\n| `per_page` | integer | Default 15 |\n\n**Response 200:** Paginated list lokasi dengan relasi `kategori`, `fotoUtama`, `kecamatan`, `kelurahan`."
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Lokasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lokasi/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lokasi",
+                "1"
+              ]
+            },
+            "description": "**GET /api/lokasi/{id}** — Publik\n\nDetail lengkap satu lokasi yang sudah disetujui.\n\n**Response 200:** Data lokasi lengkap dengan relasi:\n- `kategori`\n- `kecamatan`, `kelurahan`\n- `fotos` — semua foto\n- `reviews` + `user` — semua review beserta profil reviewer\n- `kontributor` — nama & foto kontributor\n\n**Error 404** jika lokasi tidak ditemukan atau belum disetujui."
+          },
+          "response": []
+        },
+        {
+          "name": "Lokasi Terdekat (Nearby)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lokasi/nearby?lat=-0.9492&lng=100.3543&radius=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lokasi",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "-0.9492",
+                  "description": "Wajib. Latitude user"
+                },
+                {
+                  "key": "lng",
+                  "value": "100.3543",
+                  "description": "Wajib. Longitude user"
+                },
+                {
+                  "key": "radius",
+                  "value": "1000",
+                  "description": "Opsional. Radius dalam meter, min 100, maks 50000. Default: 1000"
+                },
+                {
+                  "key": "kategori_id",
+                  "value": "1",
+                  "description": "Opsional. Filter by kategori",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/lokasi/nearby** — Publik\n\nCari lokasi terdekat dari posisi user menggunakan formula Haversine. Maks 20 hasil, diurutkan dari yang terdekat.\n\n**Query Params:**\n| Param | Tipe | Keterangan |\n|---|---|---|\n| `lat` | numeric | **Wajib.** Latitude user |\n| `lng` | numeric | **Wajib.** Longitude user |\n| `radius` | numeric | Opsional. Meter, default 1000, maks 50000 |\n| `kategori_id` | integer | Opsional. Filter kategori |\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": [ { ...lokasi, \"jarak\": 123.45 } ],\n  \"meta\": { \"lat\": -0.9492, \"lng\": 100.3543, \"radius\": 1000, \"total\": 5 }\n}\n```\nField `jarak` dalam meter."
+          },
+          "response": []
+        },
+        {
+          "name": "Cari Lokasi (Search)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lokasi/search?q=pantai",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lokasi",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "pantai",
+                  "description": "Wajib. Min 2 karakter. Cari pada nama_tempat, alamat, deskripsi"
+                }
+              ]
+            },
+            "description": "**GET /api/lokasi/search** — Publik\n\nCari lokasi berdasarkan keyword. Mencari di `nama_tempat`, `alamat`, dan `deskripsi`. Maks 20 hasil, diurutkan by `rating_avg` tertinggi.\n\n**Query Params:**\n| Param | Tipe | Keterangan |\n|---|---|---|\n| `q` | string | **Wajib.** Min 2 karakter |\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": [ ...lokasi ],\n  \"meta\": { \"keyword\": \"pantai\", \"total\": 5 }\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Kategori (Publik)",
+      "item": [
+        {
+          "name": "List Kategori",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kategori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kategori"
+              ]
+            },
+            "description": "**GET /api/kategori** — Publik\n\nList semua kategori beserta jumlah lokasi yang sudah disetujui.\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": [\n    { \"id_kategori\": 1, \"nama_kategori\": \"Pantai\", \"icon\": \"beach\", \"jumlah_lokasi\": 12 }\n  ]\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Lokasi per Kategori",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kategori/1/lokasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kategori",
+                "1",
+                "lokasi"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Default: 15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/kategori/{id}/lokasi** — Publik\n\nList lokasi disetujui pada kategori tertentu, diurutkan by `rating_avg` tertinggi.\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"kategori\": { \"id_kategori\": 1, \"nama_kategori\": \"Pantai\" },\n    \"lokasi\": { ...paginated }\n  }\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Event (Publik)",
+      "item": [
+        {
+          "name": "List Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/event",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "event"
+              ],
+              "query": [
+                {
+                  "key": "jenis_event",
+                  "value": "festival",
+                  "description": "festival | wisata | olahraga | budaya | lainnya",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "aktif",
+                  "description": "aktif | selesai | dibatalkan. Default: aktif",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Default: 15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/event** — Publik\n\nList event. Default hanya menampilkan event yang aktif.\n\n**Query Params (semua opsional):**\n| Param | Nilai | Keterangan |\n|---|---|---|\n| `jenis_event` | `festival`, `wisata`, `olahraga`, `budaya`, `lainnya` | Filter jenis event |\n| `status` | `aktif`, `selesai`, `dibatalkan` | Default: `aktif` |\n| `per_page` | integer | Default: 15 |"
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/event/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "event",
+                "1"
+              ]
+            },
+            "description": "**GET /api/event/{id}** — Publik\n\nDetail lengkap satu event dengan relasi `lokasi` dan `pembuat`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Navigasi (Publik)",
+      "item": [
+        {
+          "name": "Get Rute",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/navigasi/1?lat=-0.9492&lng=100.3543&mode=mobil",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "navigasi",
+                "1"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "-0.9492",
+                  "description": "Wajib. Latitude user"
+                },
+                {
+                  "key": "lng",
+                  "value": "100.3543",
+                  "description": "Wajib. Longitude user"
+                },
+                {
+                  "key": "mode",
+                  "value": "mobil",
+                  "description": "mobil | jalan | sepeda. Default: mobil"
+                }
+              ]
+            },
+            "description": "**GET /api/navigasi/{idLokasi}** — Publik\n\nAmbil rute dari posisi user ke lokasi tujuan via OpenRouteService.\n\n**Query Params:**\n| Param | Tipe | Keterangan |\n|---|---|---|\n| `lat` | numeric | **Wajib.** Latitude user |\n| `lng` | numeric | **Wajib.** Longitude user |\n| `mode` | string | `mobil`, `jalan`, `sepeda`. Default: `mobil` |\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"tujuan\": { \"id_lokasi\": 1, \"nama\": \"Pantai Air Manis\", \"latitude\": -0.96, \"longitude\": 100.36 },\n    \"mode\": \"mobil\",\n    \"ringkasan\": {\n      \"jarak_meter\": 3200,\n      \"jarak_teks\": \"3.2 km\",\n      \"durasi_detik\": 480,\n      \"durasi_teks\": \"8 menit\"\n    },\n    \"geometry\": { ...GeoJSON polyline },\n    \"langkah\": [\n      {\n        \"instruksi\": \"Belok kanan\",\n        \"nama_jalan\": \"Jl. Nipah\",\n        \"jarak_meter\": 120,\n        \"jarak_teks\": \"120 m\",\n        \"durasi_detik\": 30,\n        \"durasi_teks\": \"1 menit\",\n        \"tipe\": 1\n      }\n    ]\n  }\n}\n```\n\n**Tipe manuver:** 0=Lurus, 1=Kanan, 2=Kiri, dll (standar ORS)\n\n**Error 502** jika ORS tidak dapat dihubungi."
+          },
+          "response": []
+        },
+        {
+          "name": "Semua Mode Transportasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/navigasi/1/semua-mode?lat=-0.9492&lng=100.3543",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "navigasi",
+                "1",
+                "semua-mode"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "-0.9492",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "lng",
+                  "value": "100.3543",
+                  "description": "Wajib"
+                }
+              ]
+            },
+            "description": "**GET /api/navigasi/{idLokasi}/semua-mode** — Publik\n\nAmbil estimasi jarak & waktu untuk semua mode transportasi sekaligus (mobil, jalan kaki, sepeda). Gunakan ini untuk tampilkan pilihan mode di UI sebelum user mulai navigasi.\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"tujuan\": { \"id_lokasi\": 1, \"nama\": \"Pantai Air Manis\", ... },\n    \"estimasi\": {\n      \"mobil\":  { \"jarak_meter\": 3200, \"jarak_teks\": \"3.2 km\", \"durasi_detik\": 480, \"durasi_teks\": \"8 menit\" },\n      \"jalan\":  { \"jarak_meter\": 2900, \"jarak_teks\": \"2.9 km\", \"durasi_detik\": 2100, \"durasi_teks\": \"35 menit\" },\n      \"sepeda\": { \"jarak_meter\": 3000, \"jarak_teks\": \"3.0 km\", \"durasi_detik\": 720, \"durasi_teks\": \"12 menit\" }\n    }\n  }\n}\n```\nJika salah satu mode tidak tersedia untuk rute tersebut, nilainya `null`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wilayah (Publik)",
+      "item": [
+        {
+          "name": "List Semua Kecamatan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kecamatan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kecamatan"
+              ]
+            },
+            "description": "**GET /api/kecamatan**\n\nAmbil daftar semua kecamatan di Kota Padang.\nDigunakan untuk mengisi dropdown form tambah lokasi.\n\n**Auth:** Tidak diperlukan\n\n**Response 200:**\n```json\n{\n  \"success\": true,\n  \"data\": [\n    {\"id_kecamatan\": 1, \"nama_kecamatan\": \"Padang Utara\"},\n    {\"id_kecamatan\": 2, \"nama_kecamatan\": \"Padang Selatan\"}\n  ]\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Kelurahan per Kecamatan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kecamatan/1/kelurahan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kecamatan",
+                "1",
+                "kelurahan"
+              ]
+            },
+            "description": "**GET /api/kecamatan/{id}/kelurahan** — Publik\n\nList kelurahan dalam satu kecamatan. Digunakan untuk mengisi dropdown form submit lokasi.\n\n**Response 200:**\n```json\n{\n  \"data\": [\n    { \"id_kelurahan\": 1, \"nama_kelurahan\": \"Air Manis\" },\n    { \"id_kelurahan\": 2, \"nama_kelurahan\": \"Batang Arau\" }\n  ]\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Review",
+      "item": [
+        {
+          "name": "Tambah Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"komentar\": \"Tempatnya sangat indah dan bersih!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/lokasi/1/review",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lokasi",
+                "1",
+                "review"
+              ]
+            },
+            "description": "**POST /api/lokasi/{id}/review** 🔒 Auth required\n\nBuat review untuk lokasi. Setiap user hanya dapat memberikan **1 review per lokasi**. Rating akan otomatis dikalkulasi ulang.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `rating` | integer | **Wajib.** 1–5 |\n| `komentar` | string | Opsional. Maks 1000 karakter |\n\n**Error 422** jika user sudah pernah review lokasi ini."
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"komentar\": \"Bagus tapi agak ramai di akhir pekan\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/review/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "review",
+                "1"
+              ]
+            },
+            "description": "**PUT /api/review/{id}** 🔒 Auth required\n\nEdit review milik sendiri. Semua field opsional (kirim yang ingin diubah).\n\n**Error 403** jika review bukan milik user yang login."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Review",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/review/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "review",
+                "1"
+              ]
+            },
+            "description": "**DELETE /api/review/{id}** 🔒 Auth required\n\nHapus review milik sendiri.\n\n**Error 403** jika review bukan milik user yang login."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Favorit",
+      "item": [
+        {
+          "name": "List Favorit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/favorit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "favorit"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/favorit** 🔒 Auth required\n\nList semua lokasi yang difavoritkan oleh user yang login, dengan relasi `lokasi`, `kategori`, `fotoUtama`, `kecamatan`."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Favorit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/favorit/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "favorit",
+                "1"
+              ]
+            },
+            "description": "**POST /api/favorit/{idLokasi}** 🔒 Auth required\n\nToggle favorit: jika lokasi sudah difavoritkan → hapus, jika belum → tambah.\n\n**Response (tambah) 201:**\n```json\n{ \"success\": true, \"message\": \"Lokasi ditambahkan ke favorit\", \"is_favorit\": true }\n```\n\n**Response (hapus) 200:**\n```json\n{ \"success\": true, \"message\": \"Lokasi dihapus dari favorit\", \"is_favorit\": false }\n```\n\nCek field `is_favorit` untuk update state icon di UI."
+          },
+          "response": []
+        },
+        {
+          "name": "Cek Status Favorit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/favorit/check/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "favorit",
+                "check",
+                "1"
+              ]
+            },
+            "description": "**GET /api/favorit/check/{idLokasi}** 🔒 Auth required\n\nCek apakah lokasi sudah difavoritkan user yang login. Gunakan saat buka halaman detail lokasi.\n\n**Response 200:**\n```json\n{ \"success\": true, \"is_favorit\": true }\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Riwayat Kunjungan",
+      "item": [
+        {
+          "name": "List Riwayat",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/riwayat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "riwayat"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "arrived",
+                  "description": "navigating | arrived",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/riwayat** 🔒 Auth required\n\nList riwayat kunjungan user yang login, diurutkan dari terbaru.\n\n**Query Params (opsional):**\n| Param | Nilai | Keterangan |\n|---|---|---|\n| `status` | `navigating`, `arrived` | Filter by status |\n| `per_page` | integer | Default: 15 |"
+          },
+          "response": []
+        },
+        {
+          "name": "Cek Navigasi Aktif",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/riwayat/aktif",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "riwayat",
+                "aktif"
+              ]
+            },
+            "description": "**GET /api/riwayat/aktif** 🔒 Auth required\n\nCek apakah ada sesi navigasi yang sedang berjalan. Panggil saat app dibuka ulang untuk melanjutkan navigasi yang belum selesai.\n\n**Response (ada sesi aktif) 200:**\n```json\n{\n  \"success\": true,\n  \"aktif\": true,\n  \"data\": {\n    \"id_riwayat\": 5,\n    \"lokasi\": { \"id_lokasi\": 1, \"nama_tempat\": \"Pantai Air Manis\", \"latitude\": -0.96, \"longitude\": 100.36, \"alamat\": \"...\" },\n    \"mulai_navigasi\": \"2025-01-01T10:00:00.000000Z\",\n    \"radius_tiba\": 100\n  }\n}\n```\n\n**Response (tidak ada) 200:**\n```json\n{ \"success\": true, \"aktif\": false, \"data\": null }\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Mulai Navigasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/riwayat/mulai/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "riwayat",
+                "mulai",
+                "1"
+              ]
+            },
+            "description": "**POST /api/riwayat/mulai/{idLokasi}** 🔒 Auth required\n\nMulai sesi navigasi ke lokasi. Panggil saat user tap tombol **\"Rute ke Lokasi\"**.\n\nJika sudah ada sesi `navigating` ke lokasi yang sama, mengembalikan sesi yang ada (`is_new: false`).\n\n**Response 201 (sesi baru):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Navigasi dimulai, selamat jalan!\",\n  \"data\": {\n    \"id_riwayat\": 5,\n    \"id_lokasi\": 1,\n    \"nama_lokasi\": \"Pantai Air Manis\",\n    \"latitude\": -0.96,\n    \"longitude\": 100.36,\n    \"status\": \"navigating\",\n    \"mulai_navigasi\": \"2025-01-01T10:00:00.000000Z\",\n    \"radius_tiba\": 100\n  },\n  \"is_new\": true\n}\n```\n\n⚠️ Simpan `id_riwayat` — digunakan untuk endpoint **Tandai Tiba** dan **Batal Navigasi**."
+          },
+          "response": []
+        },
+        {
+          "name": "Tandai Tiba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": -0.9492,\n  \"lng\": 100.3543\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/riwayat/1/tiba",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "riwayat",
+                "1",
+                "tiba"
+              ]
+            },
+            "description": "**POST /api/riwayat/{id}/tiba** 🔒 Auth required\n\nTandai user telah tiba. Panggil saat GPS mendeteksi user masuk radius 100m dari lokasi tujuan.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `lat` | numeric | **Wajib.** Latitude GPS user saat ini |\n| `lng` | numeric | **Wajib.** Longitude GPS user saat ini |\n\n**Response 200 (berhasil):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Selamat datang di Pantai Air Manis!\",\n  \"data\": {\n    \"id_riwayat\": 5,\n    \"nama_lokasi\": \"Pantai Air Manis\",\n    \"jarak_tiba\": \"87 m\",\n    \"durasi_menit\": 12,\n    \"waktu_tiba\": \"10:12\",\n    \"jumlah_kunjungan\": 42,\n    \"prompt_review\": true\n  }\n}\n```\n\n`prompt_review: true` → tampilkan dialog ajakan menulis review.\n\n**Error 422** jika user masih > 100m dari lokasi:\n```json\n{ \"success\": false, \"message\": \"Anda belum cukup dekat...\", \"jarak_saat_ini\": \"350 m\", \"radius_tiba\": \"100 m\" }\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Batal Navigasi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/riwayat/5/batal",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "riwayat",
+                "5",
+                "batal"
+              ]
+            },
+            "description": "**DELETE /api/riwayat/{id}/batal** 🔒 Auth required\n\nBatalkan sesi navigasi yang sedang berjalan. Sesi akan dihapus (tidak masuk riwayat) karena user belum sampai.\n\n**Response 200:**\n```json\n{ \"success\": true, \"message\": \"Navigasi dibatalkan\" }\n```\n\n**Error 404** jika tidak ada sesi `navigating` dengan ID tersebut."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pengaduan",
+      "item": [
+        {
+          "name": "List Pengaduan Saya",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pengaduan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "pengaduan"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/pengaduan** 🔒 Auth required\n\nList pengaduan milik user yang login."
+          },
+          "response": []
+        },
+        {
+          "name": "Kirim Pengaduan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_lokasi",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Opsional. ID lokasi yang diadukan"
+                },
+                {
+                  "key": "jenis_pengaduan",
+                  "value": "informasi_salah",
+                  "type": "text",
+                  "description": "lokasi_salah | foto_tidak_pantas | informasi_salah | tempat_ramai | fasilitas_rusak | lainnya"
+                },
+                {
+                  "key": "isi_pengaduan",
+                  "value": "Jam operasional yang tertera tidak sesuai dengan kondisi aktual.",
+                  "type": "text"
+                },
+                {
+                  "key": "foto_bukti",
+                  "type": "file",
+                  "description": "Opsional. Image, maks 2MB",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/pengaduan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "pengaduan"
+              ]
+            },
+            "description": "**POST /api/pengaduan** 🔒 Auth required\n\nKirim pengaduan baru. Gunakan `form-data` untuk menyertakan foto bukti.\n\n**Field:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `id_lokasi` | integer | Opsional. ID lokasi terkait |\n| `jenis_pengaduan` | string | **Wajib.** Lihat opsi di bawah |\n| `isi_pengaduan` | string | **Wajib.** Maks 2000 karakter |\n| `foto_bukti` | file | Opsional. Image, maks 2MB |\n\n**Jenis pengaduan:** `lokasi_salah`, `foto_tidak_pantas`, `informasi_salah`, `tempat_ramai`, `fasilitas_rusak`, `lainnya`"
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Pengaduan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pengaduan/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "pengaduan",
+                "1"
+              ]
+            },
+            "description": "**GET /api/pengaduan/{id}** 🔒 Auth required\n\nDetail pengaduan. User hanya dapat melihat pengaduan milik sendiri. Admin/operator dapat melihat semua.\n\n**Error 403** jika bukan milik user dan bukan admin."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Kontributor",
+      "item": [
+        {
+          "name": "List Lokasi Saya",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kontributor/lokasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kontributor",
+                "lokasi"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/kontributor/lokasi** 🔒 Role: kontributor, operator, admin, super_admin\n\nList semua lokasi yang disubmit oleh kontributor yang login (semua status termasuk pending & revisi)."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Lokasi Baru",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nama_tempat",
+                  "value": "Pantai Nirwana",
+                  "type": "text"
+                },
+                {
+                  "key": "id_kategori",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "alamat",
+                  "value": "Jl. Raya Pantai No. 1, Padang",
+                  "type": "text"
+                },
+                {
+                  "key": "id_kecamatan",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "id_kelurahan",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "latitude",
+                  "value": "-0.9492",
+                  "type": "text"
+                },
+                {
+                  "key": "longitude",
+                  "value": "100.3543",
+                  "type": "text"
+                },
+                {
+                  "key": "deskripsi",
+                  "value": "Pantai indah dengan pasir putih.",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "jam_operasional",
+                  "value": "08:00 - 18:00",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "kontak",
+                  "value": "08123456789",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "website",
+                  "value": "https://example.com",
+                  "type": "text",
+                  "description": "Opsional, harus URL valid"
+                },
+                {
+                  "key": "foto[]",
+                  "type": "file",
+                  "description": "Opsional. Maks 5 foto, tiap foto maks 2MB (jpg/jpeg/png/webp)",
+                  "value": null
+                },
+                {
+                  "key": "foto[]",
+                  "type": "file",
+                  "value": null,
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/kontributor/lokasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kontributor",
+                "lokasi"
+              ]
+            },
+            "description": "**POST /api/kontributor/lokasi** 🔒 Role: kontributor, operator, admin, super_admin\n\nSubmit lokasi baru. Status awal: `pending` (menunggu verifikasi admin).\n\n**Field:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `nama_tempat` | string | **Wajib.** Maks 255 |\n| `id_kategori` | integer | **Wajib.** Harus ada di tabel kategori |\n| `alamat` | string | **Wajib** |\n| `id_kecamatan` | integer | **Wajib** |\n| `id_kelurahan` | integer | **Wajib** |\n| `latitude` | numeric | **Wajib.** -90 s/d 90 |\n| `longitude` | numeric | **Wajib.** -180 s/d 180 |\n| `deskripsi` | string | Opsional |\n| `jam_operasional` | string | Opsional, maks 255 |\n| `kontak` | string | Opsional, maks 50 |\n| `website` | string | Opsional, URL valid |\n| `foto[]` | file | Opsional. Maks 5 foto, masing-masing maks 2MB |\n\n**Status verifikasi:** `pending` → `disetujui` / `ditolak` / `revisi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Lokasi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nama_tempat",
+                  "value": "Pantai Nirwana Updated",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "deskripsi",
+                  "value": "Deskripsi baru.",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "jam_operasional",
+                  "value": "07:00 - 19:00",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "foto[]",
+                  "type": "file",
+                  "description": "Opsional. Foto tambahan",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/kontributor/lokasi/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kontributor",
+                "lokasi",
+                "1"
+              ]
+            },
+            "description": "**PUT /api/kontributor/lokasi/{id}** 🔒 Role: kontributor, operator, admin, super_admin\n\nUpdate lokasi milik sendiri. **Hanya bisa diedit jika status `pending` atau `revisi`.**\n\nJika sebelumnya status `revisi`, setelah diedit akan otomatis kembali ke `pending`.\n\n**Error 422** jika status bukan `pending` atau `revisi`."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Lokasi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kontributor/lokasi/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kontributor",
+                "lokasi",
+                "1"
+              ]
+            },
+            "description": "**DELETE /api/kontributor/lokasi/{id}** 🔒 Role: kontributor, operator, admin, super_admin\n\nHapus lokasi milik sendiri. **Hanya bisa dihapus jika status `pending` atau `ditolak`.**\n\nSemua foto akan ikut dihapus dari storage.\n\n**Error 422** jika status bukan `pending` atau `ditolak`."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Foto Lokasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "description": "Wajib. Image jpg/jpeg/png/webp, maks 2MB",
+                  "value": null
+                },
+                {
+                  "key": "caption",
+                  "value": "Pemandangan dari tepi pantai",
+                  "type": "text",
+                  "description": "Opsional, maks 255 karakter"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/kontributor/lokasi/1/foto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kontributor",
+                "lokasi",
+                "1",
+                "foto"
+              ]
+            },
+            "description": "**POST /api/kontributor/lokasi/{id}/foto** 🔒 Role: kontributor, operator, admin, super_admin\n\nUpload satu foto tambahan untuk lokasi milik sendiri.\n\n**Response 201:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Foto berhasil diupload\",\n  \"data\": {\n    \"id_foto\": 10,\n    \"file_foto\": \"lokasi-foto/xxx.jpg\",\n    \"url\": \"http://localhost:8000/storage/lokasi-foto/xxx.jpg\",\n    \"caption\": \"Pemandangan dari tepi pantai\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Foto Lokasi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/kontributor/lokasi/1/foto/10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "kontributor",
+                "lokasi",
+                "1",
+                "foto",
+                "10"
+              ]
+            },
+            "description": "**DELETE /api/kontributor/lokasi/{id}/foto/{idFoto}** 🔒 Role: kontributor, operator, admin, super_admin\n\nHapus foto tertentu dari lokasi milik sendiri. File akan dihapus dari storage."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Approval",
+      "item": [
+        {
+          "name": "List Antrian Approval",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/approval",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "approval"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "pending | revisi | disetujui | ditolak. Default: pending & revisi",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/admin/approval** 🔒 Role: operator, admin, super_admin\n\nList lokasi yang perlu diproses. Default menampilkan status `pending` dan `revisi`.\n\nResponse menyertakan relasi `kategori`, `fotoUtama`, `kecamatan`, `kelurahan`, dan `kontributor` (nama & email)."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Lokasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catatan\": \"Lokasi sudah diverifikasi dan layak ditampilkan.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/approval/1/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "approval",
+                "1",
+                "approve"
+              ]
+            },
+            "description": "**POST /api/admin/approval/{id}/approve** 🔒 Role: operator, admin, super_admin\n\nSetujui lokasi kontributor. Status berubah menjadi `disetujui` dan lokasi langsung tampil di publik.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `catatan` | string | Opsional. Maks 1000 karakter |"
+          },
+          "response": []
+        },
+        {
+          "name": "Tolak Lokasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catatan\": \"Foto tidak sesuai standar. Lokasi tidak dapat diverifikasi.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/approval/1/tolak",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "approval",
+                "1",
+                "tolak"
+              ]
+            },
+            "description": "**POST /api/admin/approval/{id}/tolak** 🔒 Role: operator, admin, super_admin\n\nTolak lokasi kontributor. Status berubah menjadi `ditolak`.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `catatan` | string | **Wajib.** Alasan penolakan, maks 1000 karakter |"
+          },
+          "response": []
+        },
+        {
+          "name": "Minta Revisi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catatan\": \"Mohon tambahkan jam operasional dan foto yang lebih jelas.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/approval/1/revisi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "approval",
+                "1",
+                "revisi"
+              ]
+            },
+            "description": "**POST /api/admin/approval/{id}/revisi** 🔒 Role: operator, admin, super_admin\n\nMinta kontributor melakukan revisi. Status berubah menjadi `revisi`. Kontributor dapat mengedit dan submit ulang.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `catatan` | string | **Wajib.** Instruksi revisi, maks 1000 karakter |"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Event",
+      "item": [
+        {
+          "name": "Buat Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nama_event",
+                  "value": "Festival Budaya Minang 2025",
+                  "type": "text"
+                },
+                {
+                  "key": "jenis_event",
+                  "value": "budaya",
+                  "type": "text",
+                  "description": "festival | wisata | olahraga | budaya | lainnya"
+                },
+                {
+                  "key": "tanggal_mulai",
+                  "value": "2025-08-17",
+                  "type": "text"
+                },
+                {
+                  "key": "tanggal_selesai",
+                  "value": "2025-08-20",
+                  "type": "text"
+                },
+                {
+                  "key": "id_lokasi",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "lokasi_event",
+                  "value": "Lapangan Imam Bonjol, Padang",
+                  "type": "text",
+                  "description": "Opsional. Nama lokasi bebas jika tidak ada di database"
+                },
+                {
+                  "key": "deskripsi",
+                  "value": "Festival tahunan budaya Minangkabau.",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "banner",
+                  "type": "file",
+                  "description": "Opsional. Image, maks 2MB",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/event",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "event"
+              ]
+            },
+            "description": "**POST /api/admin/event** 🔒 Role: operator, admin, super_admin\n\nBuat event baru. Status default: `aktif`.\n\n**Field:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `nama_event` | string | **Wajib.** Maks 255 |\n| `jenis_event` | string | **Wajib.** `festival`, `wisata`, `olahraga`, `budaya`, `lainnya` |\n| `tanggal_mulai` | date | **Wajib.** Format: YYYY-MM-DD |\n| `tanggal_selesai` | date | **Wajib.** >= tanggal_mulai |\n| `id_lokasi` | integer | Opsional |\n| `lokasi_event` | string | Opsional. Maks 255 |\n| `deskripsi` | string | Opsional |\n| `banner` | file | Opsional. Image, maks 2MB |"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nama_event",
+                  "value": "Festival Budaya Minang 2025 (Updated)",
+                  "type": "text",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "status",
+                  "value": "selesai",
+                  "type": "text",
+                  "description": "Opsional. aktif | selesai | dibatalkan"
+                },
+                {
+                  "key": "banner",
+                  "type": "file",
+                  "description": "Opsional. Banner baru (banner lama dihapus)",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/event/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "event",
+                "1"
+              ]
+            },
+            "description": "**PUT /api/admin/event/{id}** 🔒 Role: operator, admin, super_admin\n\nUpdate event. Semua field opsional. Jika upload banner baru, banner lama otomatis dihapus.\n\n**Status:** `aktif`, `selesai`, `dibatalkan`"
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/event/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "event",
+                "1"
+              ]
+            },
+            "description": "**DELETE /api/admin/event/{id}** 🔒 Role: operator, admin, super_admin\n\nHapus event. Banner juga dihapus dari storage."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Pengaduan",
+      "item": [
+        {
+          "name": "Tindak Lanjut Pengaduan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"diproses\",\n  \"catatan_admin\": \"Laporan sudah diterima dan sedang dalam proses pengecekan.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/pengaduan/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "pengaduan",
+                "1"
+              ]
+            },
+            "description": "**PUT /api/admin/pengaduan/{id}** 🔒 Role: operator, admin, super_admin\n\nUpdate status dan catatan tindak lanjut pengaduan.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `status` | string | **Wajib.** `pending`, `diproses`, `selesai`, `ditolak` |\n| `catatan_admin` | string | Opsional. Maks 2000 karakter |"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Kategori",
+      "item": [
+        {
+          "name": "Tambah Kategori",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_kategori\": \"Kuliner\",\n  \"icon\": \"restaurant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/kategori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "kategori"
+              ]
+            },
+            "description": "**POST /api/admin/kategori** 🔒 Role: admin, super_admin\n\nBuat kategori baru.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `nama_kategori` | string | **Wajib.** Unik, maks 255 |\n| `icon` | string | Opsional. Nama icon, maks 100 |"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Kategori",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_kategori\": \"Kuliner Tradisional\",\n  \"icon\": \"food\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/kategori/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "kategori",
+                "1"
+              ]
+            },
+            "description": "**PUT /api/admin/kategori/{id}** 🔒 Role: admin, super_admin\n\nUpdate kategori. Semua field opsional."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Kategori",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/kategori/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "kategori",
+                "1"
+              ]
+            },
+            "description": "**DELETE /api/admin/kategori/{id}** 🔒 Role: admin, super_admin\n\nHapus kategori.\n\n**Error 422** jika masih ada lokasi yang menggunakan kategori ini."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — User Management",
+      "item": [
+        {
+          "name": "List User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "kontributor",
+                  "description": "user | kontributor | operator | admin | super_admin",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "budi",
+                  "description": "Cari by name atau email",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /api/admin/users** 🔒 Role: admin, super_admin\n\nList semua user dengan filter dan pencarian.\n\n**Query Params (semua opsional):**\n| Param | Nilai | Keterangan |\n|---|---|---|\n| `role` | `user`, `kontributor`, `operator`, `admin`, `super_admin` | Filter by role |\n| `search` | string | Cari by name atau email |\n| `per_page` | integer | Default: 15 |"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Role User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"kontributor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/2/role",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "2",
+                "role"
+              ]
+            },
+            "description": "**PUT /api/admin/users/{id}/role** 🔒 Role: admin, super_admin\n\nUbah role user.\n\n**Body:**\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `role` | string | **Wajib.** `super_admin`, `admin`, `operator`, `kontributor`, `user` |\n\n**Error 422** jika mencoba mengubah role diri sendiri."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "2"
+              ]
+            },
+            "description": "**DELETE /api/admin/users/{id}** 🔒 Role: admin, super_admin\n\nHapus user dari sistem.\n\n**Error 422** jika mencoba menghapus akun sendiri."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
