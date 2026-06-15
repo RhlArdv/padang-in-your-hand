@@ -38,17 +38,79 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                        <label for="id_kategori" class="block text-sm font-semibold text-gray-700 mb-1.5">Kategori <span class="text-red-500">*</span></label>
-                        <select name="id_kategori" id="id_kategori" required
-                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-navy-500 focus:ring-2 focus:ring-navy-500/10">
-                            <option value="">Pilih Kategori</option>
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        selectedId: '{{ old('id_kategori') }}',
+                        selectedLabel: '{{ old('id_kategori') == 'lainnya' ? 'Lainnya (Tulis Baru)' : ($kategoris->firstWhere('id_kategori', old('id_kategori'))->nama_kategori ?? 'Pilih Kategori') }}',
+                        kategoris: [
                             @foreach($kategoris as $kat)
-                                <option value="{{ $kat->id_kategori }}" {{ old('id_kategori') == $kat->id_kategori ? 'selected' : '' }}>
-                                    {{ $kat->nama_kategori }}
-                                </option>
+                                { id: '{{ $kat->id_kategori }}', label: '{{ addslashes($kat->nama_kategori) }}' },
                             @endforeach
-                        </select>
+                            { id: 'lainnya', label: 'Lainnya (Tulis Baru)' }
+                        ],
+                        get filteredKategoris() {
+                            if (!this.search) return this.kategoris;
+                            return this.kategoris.filter(kat => kat.label.toLowerCase().includes(this.search.toLowerCase()));
+                        },
+                        select(id, label) {
+                            this.selectedId = id;
+                            this.selectedLabel = label;
+                            this.open = false;
+                            this.search = '';
+                        }
+                    }" class="relative">
+                        <label for="id_kategori" class="block text-sm font-semibold text-gray-700 mb-1.5">Kategori <span class="text-red-500">*</span></label>
+                        
+                        <!-- Hidden input to submit the actual value -->
+                        <input type="hidden" name="id_kategori" :value="selectedId" id="id_kategori">
+                        
+                        <!-- Trigger Button -->
+                        <button type="button" @click="open = !open" @click.outside="open = false"
+                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-left focus:border-navy-500 focus:ring-2 focus:ring-navy-500/10 bg-white flex items-center justify-between transition-all">
+                            <span x-text="selectedLabel" class="truncate"></span>
+                            <svg class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        
+                        <!-- Dropdown Panel -->
+                        <div x-show="open" style="display: none;"
+                            class="absolute z-50 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-hidden flex flex-col transition-all duration-200">
+                            <!-- Search Input -->
+                            <div class="p-2 border-b border-gray-100 bg-white">
+                                <input type="text" x-model="search" placeholder="Cari kategori..."
+                                    class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-navy-500 bg-gray-50/50">
+                            </div>
+                            <!-- Options List -->
+                            <div class="overflow-y-auto flex-1">
+                                <template x-for="kat in filteredKategoris" :key="kat.id">
+                                    <button type="button" @click="select(kat.id, kat.label)"
+                                        class="w-full px-4 py-2 text-left text-xs hover:bg-navy-50 hover:text-navy-900 transition-colors flex items-center justify-between"
+                                        :class="selectedId == kat.id ? 'bg-navy-50/50 text-navy-800 font-semibold' : 'text-gray-700'">
+                                        <span x-text="kat.label" class="truncate"></span>
+                                        <span x-show="selectedId == kat.id" class="text-navy-600 flex-shrink-0">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </template>
+                                <div x-show="filteredKategoris.length === 0" class="px-4 py-3 text-xs text-gray-400 text-center">
+                                    Kategori tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Conditional Form Field for "Lainnya" -->
+                        <div x-show="selectedId === 'lainnya'" class="mt-3" style="display: none;" x-transition>
+                            <label for="kategori_baru" class="block text-xs font-semibold text-gray-500 mb-1">Nama Kategori Baru <span class="text-red-500">*</span></label>
+                            <input type="text" name="kategori_baru" id="kategori_baru" value="{{ old('kategori_baru') }}"
+                                class="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:border-navy-500 focus:ring-2 focus:ring-navy-500/10"
+                                placeholder="Tulis nama kategori baru..." :required="selectedId === 'lainnya'">
+                            @error('kategori_baru') <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p> @enderror
+                        </div>
+
                         @error('id_kategori') <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p> @enderror
                     </div>
 
