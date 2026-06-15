@@ -112,6 +112,7 @@
             </nav>
 
             {{-- User card bottom --}}
+            @if(auth()->check())
             <div class="flex-shrink-0 border-t border-gray-100 p-3">
                 <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors">
                     <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 flex-1 min-w-0">
@@ -150,6 +151,7 @@
                     </form>
                 </div>
             </div>
+            @endif
 
         </aside>
 
@@ -174,6 +176,7 @@
                 <div class="flex-1"></div>
 
                 {{-- Avatar + nama --}}
+                @if(auth()->check())
                 <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
                     <div class="text-right hidden md:block">
                         <p class="text-[13px] font-semibold text-gray-800 leading-none">{{ auth()->user()->name }}</p>
@@ -198,6 +201,11 @@
                         </div>
                     @endif
                 </a>
+                @else
+                <a href="{{ route('login') }}" class="text-xs font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
+                    Login
+                </a>
+                @endif
 
             </header>
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Favorit;
 use App\Models\Lokasi;
+use App\Models\Pengaduan;
 use App\Models\RiwayatKunjungan;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -19,8 +20,9 @@ class DashboardController extends Controller
         // -------------------------------------------------------
         $totalLokasi    = Lokasi::where('status_verifikasi', 'disetujui')->count();
         $totalUser      = User::count();
-        $totalFavorit   = Favorit::count();
         $totalKunjungan = RiwayatKunjungan::where('status', 'arrived')->count();
+        $totalPengaduan = Pengaduan::whereIn('status', ['menunggu', 'diproses'])->count();
+        $totalEvent     = Event::where('status', 'aktif')->count();
 
         // -------------------------------------------------------
         // Verifikasi kontributor terbaru (5 pending/revisi)
@@ -29,6 +31,24 @@ class DashboardController extends Controller
             ->with(['kontributor:id,name', 'kategori'])
             ->latest()
             ->take(5)
+            ->get();
+
+        // -------------------------------------------------------
+        // Pengaduan warga terbaru (5 status menunggu/diproses)
+        // -------------------------------------------------------
+        $recentPengaduan = Pengaduan::with(['user:id,name', 'lokasi:id_lokasi,nama_tempat'])
+            ->whereIn('status', ['menunggu', 'diproses'])
+            ->latest()
+            ->take(5)
+            ->get();
+
+        // -------------------------------------------------------
+        // Event kota terdekat (3 event aktif)
+        // -------------------------------------------------------
+        $upcomingEvents = Event::where('status', 'aktif')
+            ->where('tanggal_selesai', '>=', now())
+            ->orderBy('tanggal_mulai')
+            ->take(3)
             ->get();
 
         // -------------------------------------------------------
@@ -52,9 +72,12 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'totalLokasi',
             'totalUser',
-            'totalFavorit',
             'totalKunjungan',
+            'totalPengaduan',
+            'totalEvent',
             'pendingLokasi',
+            'recentPengaduan',
+            'upcomingEvents',
             'kunjunganPerBulan',
         ));
     }

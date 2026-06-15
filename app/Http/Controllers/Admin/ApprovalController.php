@@ -18,9 +18,7 @@ class ApprovalController extends Controller
             'kelurahan',
             'fotos',
             'approvalLogs.admin', 
-        ])->whereHas('kontributor', function ($q) {
-            $q->where('role', 'kontributor');
-        });
+        ]);
 
         if ($request->filled('status')) {
             $query->where('status_verifikasi', $request->status);
@@ -37,9 +35,6 @@ class ApprovalController extends Controller
     public function show(int $id)
     {
         $lokasi = Lokasi::with(['kategori', 'kecamatan', 'kelurahan', 'fotos', 'kontributor', 'approvalLogs.admin'])
-            ->whereHas('kontributor', function ($q) {
-                $q->where('role', 'kontributor');
-            })
             ->findOrFail($id);
         return view('admin.approval.show', compact('lokasi'));
     }

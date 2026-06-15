@@ -106,7 +106,7 @@
 </a>
 
 {{-- Manajemen User (hanya super_admin & admin) --}}
-@if(in_array(auth()->user()->role, ['super_admin', 'admin']))
+@if(auth()->check() && in_array(auth()->user()->role, ['super_admin', 'admin']))
     <p class="px-3 pt-4 pb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Pengaturan</p>
 
     @php $active = request()->routeIs('admin.users.*'); @endphp
