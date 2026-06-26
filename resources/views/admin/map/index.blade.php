@@ -249,16 +249,15 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Pusat Kota Padang
+            // ==========================================
+            // MAP INITIALIZATION
+            // ==========================================
             const map = L.map('map', {
-                zoomControl: false, // Matikan tombol default agar layout tetap bersih & HUD-able
+                zoomControl: false,
                 preferCanvas: true
             }).setView([-0.9471, 100.4172], 13);
 
-            // Tambahkan kontrol zoom kustom di bagian kanan bawah
-            L.control.zoom({
-                position: 'bottomright'
-            }).addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
 
             L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
                 attribution: '&copy; Google Maps',
@@ -271,18 +270,18 @@
             // ==========================================
             function getKecamatanColor(name) {
                 const cleanName = (name || '').toLowerCase().replace('kecamatan', '').replace('kec.', '').trim();
-                if (cleanName.includes('barat')) return '#6366f1'; // Indigo
-                if (cleanName.includes('timur')) return '#3b82f6'; // Blue
-                if (cleanName.includes('utara')) return '#14b8a6'; // Teal
-                if (cleanName.includes('selatan')) return '#f59e0b'; // Orange
-                if (cleanName.includes('kuranji')) return '#10b981'; // Green
-                if (cleanName.includes('tangah')) return '#8b5cf6'; // Purple
-                if (cleanName.includes('nanggalo')) return '#ec4899'; // Pink
-                if (cleanName.includes('begalung')) return '#06b6d4'; // Cyan
-                if (cleanName.includes('kilangan')) return '#84cc16'; // Lime
-                if (cleanName.includes('pauh')) return '#f97316'; // Orange-Red
-                if (cleanName.includes('bungus') || cleanName.includes('kabung')) return '#ef4444'; // Red
-                return '#64748b'; // Default Slate
+                if (cleanName.includes('barat')) return '#6366f1';
+                if (cleanName.includes('timur')) return '#3b82f6';
+                if (cleanName.includes('utara')) return '#14b8a6';
+                if (cleanName.includes('selatan')) return '#f59e0b';
+                if (cleanName.includes('kuranji')) return '#10b981';
+                if (cleanName.includes('tangah')) return '#8b5cf6';
+                if (cleanName.includes('nanggalo')) return '#ec4899';
+                if (cleanName.includes('begalung')) return '#06b6d4';
+                if (cleanName.includes('kilangan')) return '#84cc16';
+                if (cleanName.includes('pauh')) return '#f97316';
+                if (cleanName.includes('bungus') || cleanName.includes('kabung')) return '#ef4444';
+                return '#64748b';
             }
 
             fetch('/geojson/padang-kecamatan.geojson')
@@ -341,12 +340,49 @@
                     console.warn('GeoJSON kecamatan tidak dimuat:', error.message);
                 });
 
+            // ==========================================
+            // DATA & CONSTANTS
+            // ==========================================
             const lokasiData = @json($lokasi);
-            const allMarkers = []; // Simpan referensi ke semua marker
+            const STORAGE_URL = `{{ asset('storage') }}`;
+            const DETAIL_BASE_URL = `{{ url('admin/lokasi') }}`;
+            const POPUP_BASE_URL = `{{ url('admin/map/lokasi') }}`;
 
-            // Konfigurasi Modern Gen-Z Cluster
+            // O(1) lookup maps instead of Array.find()
+            const markerById = new Map();
+            const lokasiById = new Map();
+            lokasiData.forEach(loc => lokasiById.set(loc.id_lokasi, loc));
+
+            // ==========================================
+            // CATEGORY STYLE HELPER
+            // ==========================================
+            function getCategoryStyle(categoryName) {
+                const name = (categoryName || '').toLowerCase();
+                if (name.includes('ibadah') || name.includes('masjid')) return { color: '#10b981', initial: '🕌' };
+                if (name.includes('sekolah') || name.includes('kampus')) return { color: '#3b82f6', initial: '🎓' };
+                if (name.includes('makan') || name.includes('cafe')) return { color: '#f59e0b', initial: '🍽️' };
+                if (name.includes('spbu')) return { color: '#ef4444', initial: '⛽' };
+                if (name.includes('hotel') || name.includes('penginapan')) return { color: '#8b5cf6', initial: '🏨' };
+                if (name.includes('wisata') || name.includes('pantai')) return { color: '#ec4899', initial: '🏖️' };
+                if (name.includes('pemerintah') || name.includes('polisi') || name.includes('tni')) return { color: '#475569', initial: '🏛️' };
+                if (name.includes('sakit') || name.includes('puskesmas') || name.includes('apotek')) return { color: '#14b8a6', initial: '🏥' };
+                if (name.includes('atm') || name.includes('bank')) return { color: '#eab308', initial: '🏧' };
+                if (name.includes('olahraga')) return { color: '#f97316', initial: '⚽' };
+                if (name.includes('terminal') || name.includes('pelabuhan')) return { color: '#6366f1', initial: '🚌' };
+                if (name.includes('umkm')) return { color: '#84cc16', initial: '🏪' };
+                return { color: '#64748b', initial: '📍' };
+            }
+
+            // ==========================================
+            // MARKER CLUSTER CONFIGURATION
+            // ==========================================
             const markerClusterGroup = L.markerClusterGroup({
                 maxClusterRadius: 80,
+                // Mengurangi animasi cluster untuk performa
+                animate: true,
+                chunkedLoading: true,       // Load marker secara bertahap agar tidak freeze UI
+                chunkInterval: 100,         // Interval antar chunk (ms)
+                chunkDelay: 20,             // Delay antar chunk (ms)
                 iconCreateFunction: function(cluster) {
                     const count = cluster.getChildCount();
                     let sizeClass = 'w-10 h-10 text-xs';
@@ -368,51 +404,15 @@
                 zoomToBoundsOnClick: true
             });
 
-            // Color palette mapping for categories
-            function getCategoryStyle(categoryName) {
-                const name = (categoryName || '').toLowerCase();
-                if (name.includes('ibadah') || name.includes('masjid')) return { color: '#10b981', initial: '🕌' }; // Green
-                if (name.includes('sekolah') || name.includes('kampus')) return { color: '#3b82f6', initial: '🎓' }; // Blue
-                if (name.includes('makan') || name.includes('cafe')) return { color: '#f59e0b', initial: '🍽️' }; // Orange
-                if (name.includes('spbu')) return { color: '#ef4444', initial: '⛽' }; // Red
-                if (name.includes('hotel') || name.includes('penginapan')) return { color: '#8b5cf6', initial: '🏨' }; // Purple
-                if (name.includes('wisata') || name.includes('pantai')) return { color: '#ec4899', initial: '🏖️' }; // Pink
-                if (name.includes('pemerintah') || name.includes('polisi') || name.includes('tni')) return { color: '#475569', initial: '🏛️' }; // Slate
-                if (name.includes('sakit') || name.includes('puskesmas') || name.includes('apotek')) return { color: '#14b8a6', initial: '🏥' }; // Teal
-                if (name.includes('atm') || name.includes('bank')) return { color: '#eab308', initial: '🏧' }; // Yellow
-                if (name.includes('olahraga')) return { color: '#f97316', initial: '⚽' }; // Orange
-                if (name.includes('terminal') || name.includes('pelabuhan')) return { color: '#6366f1', initial: '🚌' }; // Indigo
-                if (name.includes('umkm')) return { color: '#84cc16', initial: '🏪' }; // Lime
-                return { color: '#64748b', initial: '📍' }; // Default Slate
-            }
+            // ==========================================
+            // LAZY POPUP — Build popup HTML on click via AJAX
+            // ==========================================
+            // Cache untuk popup data yang sudah di-fetch agar tidak request ulang
+            const popupCache = new Map();
 
-            // Generate all markers
-            lokasiData.forEach(loc => {
-                if (!loc.latitude || !loc.longitude) return;
-
-                const style = getCategoryStyle(loc.kategori?.nama_kategori);
-                const imageUrl = loc.foto_utama ? `{{ asset('storage') }}/` + loc.foto_utama.file_foto : null;
-                const urlDetail = `{{ url('admin/lokasi') }}/` + loc.id_lokasi;
-                
-                // Custom SVG Marker with Emoji
-                const customIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `
-                        <div class="relative flex items-center justify-center w-9 h-9 -mt-4 -ml-4 transition-all duration-300 hover:scale-115 hover:-translate-y-0.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)]">
-                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="absolute w-full h-full top-0 left-0">
-                                <path d="M12 21.5C12 21.5 20.5 15.79 20.5 9.5C20.5 4.80558 16.6944 1 12 1C7.30558 1 3.5 4.80558 3.5 9.5C3.5 15.79 12 21.5 12 21.5Z" fill="${style.color}" stroke="white" stroke-width="2"/>
-                                <circle cx="12" cy="9.5" r="4.5" fill="white"/>
-                            </svg>
-                            <span class="relative z-10 text-[11px] -mt-1 leading-none select-none">${style.initial}</span>
-                        </div>
-                    `,
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 36],
-                    popupAnchor: [0, -32]
-                });
-
-                // Generate HTML Popup
-                const popupContent = `
+            function buildPopupHtml(loc, style, imageUrl) {
+                const urlDetail = `${DETAIL_BASE_URL}/${loc.id_lokasi}`;
+                return `
                     <div class="overflow-hidden rounded-2xl bg-white shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex flex-col font-sans max-w-[280px]">
                         <div class="relative h-28 w-full bg-slate-100 overflow-hidden select-none">
                             ${imageUrl ? `
@@ -438,7 +438,7 @@
                             <div class="flex items-center gap-1.5 mb-3.5 min-w-0">
                                 ${loc.rating_avg ? `
                                     <div class="flex items-center text-amber-500 text-[10px] font-bold flex-shrink-0">
-                                        ★ <span class="text-slate-600 ml-0.5">${loc.rating_avg.toFixed(1)}</span>
+                                        ★ <span class="text-slate-600 ml-0.5">${parseFloat(loc.rating_avg).toFixed(1)}</span>
                                     </div>
                                     <span class="text-slate-300 text-[9px] flex-shrink-0">•</span>
                                 ` : ''}
@@ -452,92 +452,188 @@
                         </div>
                     </div>
                 `;
+            }
 
+            /**
+             * Lazy popup handler: fetch data lengkap (termasuk foto) dari server
+             * saat marker diklik, lalu render popup. Hasilnya di-cache.
+             */
+            function onMarkerPopupOpen(e) {
+                const marker = e.target;
+                const locId = marker._locId;
+                const loc = lokasiById.get(locId);
+                if (!loc) return;
+
+                const style = getCategoryStyle(loc.kategori?.nama_kategori);
+
+                // Jika sudah ada di cache, langsung render
+                if (popupCache.has(locId)) {
+                    const cached = popupCache.get(locId);
+                    const imageUrl = cached.foto_utama ? `${STORAGE_URL}/${cached.foto_utama.file_foto}` : null;
+                    marker.getPopup().setContent(buildPopupHtml(cached, style, imageUrl));
+                    return;
+                }
+
+                // Tampilkan loading spinner sementara
+                marker.getPopup().setContent(`
+                    <div class="overflow-hidden rounded-2xl bg-white shadow-lg flex flex-col items-center justify-center p-8 max-w-[280px]">
+                        <div class="w-8 h-8 border-3 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+                        <p class="text-[10px] font-bold text-slate-400 mt-3">Memuat detail...</p>
+                    </div>
+                `);
+
+                // Fetch data lengkap dari backend
+                fetch(`${POPUP_BASE_URL}/${locId}/popup`)
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to fetch');
+                        return r.json();
+                    })
+                    .then(data => {
+                        popupCache.set(locId, data);
+                        const imageUrl = data.foto_utama ? `${STORAGE_URL}/${data.foto_utama.file_foto}` : null;
+                        if (marker.isPopupOpen()) {
+                            marker.getPopup().setContent(buildPopupHtml(data, style, imageUrl));
+                        }
+                    })
+                    .catch(() => {
+                        // Fallback: render popup dengan data yang sudah ada (tanpa foto)
+                        if (marker.isPopupOpen()) {
+                            marker.getPopup().setContent(buildPopupHtml(loc, style, null));
+                        }
+                    });
+            }
+
+            // ==========================================
+            // GENERATE ALL MARKERS (tanpa popup HTML pre-built)
+            // ==========================================
+            const allMarkers = [];
+
+            lokasiData.forEach(loc => {
+                if (!loc.latitude || !loc.longitude) return;
+
+                const style = getCategoryStyle(loc.kategori?.nama_kategori);
+
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `
+                        <div class="relative flex items-center justify-center w-9 h-9 -mt-4 -ml-4 transition-all duration-300 hover:scale-115 hover:-translate-y-0.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)]">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="absolute w-full h-full top-0 left-0">
+                                <path d="M12 21.5C12 21.5 20.5 15.79 20.5 9.5C20.5 4.80558 16.6944 1 12 1C7.30558 1 3.5 4.80558 3.5 9.5C3.5 15.79 12 21.5 12 21.5Z" fill="${style.color}" stroke="white" stroke-width="2"/>
+                                <circle cx="12" cy="9.5" r="4.5" fill="white"/>
+                            </svg>
+                            <span class="relative z-10 text-[11px] -mt-1 leading-none select-none">${style.initial}</span>
+                        </div>
+                    `,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 36],
+                    popupAnchor: [0, -32]
+                });
+
+                // Bind popup container kosong — content diisi saat popupopen
                 const marker = L.marker([loc.latitude, loc.longitude], { icon: customIcon })
-                    .bindPopup(popupContent);
+                    .bindPopup('', { maxWidth: 280 });
 
-                // Inject variables on marker
                 marker._kategoriId = loc.id_kategori;
                 marker._locId = loc.id_lokasi;
-                
+
+                // Lazy popup: fetch & render saat popup dibuka
+                marker.on('popupopen', onMarkerPopupOpen);
                 marker.on('click', function () {
                     highlightSidebarCard(loc.id_lokasi);
                 });
 
+                markerById.set(loc.id_lokasi, marker);
                 allMarkers.push(marker);
             });
 
-            // Re-usable elements
+            // ==========================================
+            // DOM REFERENCES
+            // ==========================================
             const searchInput = document.getElementById('sidebar-search');
             const clearSearchBtn = document.getElementById('clear-search');
             const locationListContainer = document.getElementById('location-list');
             const checkboxes = document.querySelectorAll('.kategori-checkbox');
+            const spotsCountEl = document.getElementById('spots-count');
 
-            // Synchronized Filter & Render Logic
-            function updateMapAndList() {
-                const query = searchInput.value.toLowerCase().trim();
-                const checkedIds = [...checkboxes].filter(c => c.checked).map(c => parseInt(c.value));
+            // ==========================================
+            // VIRTUAL SCROLL — Hanya render card yang terlihat
+            // ==========================================
+            const CARD_HEIGHT = 82;   // Tinggi per card (px) termasuk gap
+            const BUFFER_CARDS = 5;   // Card tambahan di atas/bawah viewport
 
-                if (query) {
-                    clearSearchBtn.classList.remove('hidden');
-                    clearSearchBtn.classList.add('flex');
-                } else {
-                    clearSearchBtn.classList.remove('flex');
-                    clearSearchBtn.classList.add('hidden');
-                }
+            let filteredData = [];    // Data hasil filter saat ini
+            let virtualScrollActive = false;
+            let scrollContainer = null;
+            let contentSpacer = null;
+            let cardContainer = null;
 
-                // Filter Data
-                const filteredData = lokasiData.filter(loc => {
-                    const matchesCategory = checkedIds.includes(loc.id_kategori);
-                    const matchesSearch = !query || 
-                        (loc.nama_tempat && loc.nama_tempat.toLowerCase().includes(query)) ||
-                        (loc.alamat && loc.alamat.toLowerCase().includes(query));
-                    return matchesCategory && matchesSearch;
-                });
+            /**
+             * Setup virtual scroll container.
+             * Membuat struktur: scrollContainer > contentSpacer > cardContainer
+             */
+            function setupVirtualScroll() {
+                locationListContainer.innerHTML = '';
 
-                // 1. Rebuild Map Clusters
-                markerClusterGroup.clearLayers();
-                const filteredMarkers = allMarkers.filter(m => 
-                    filteredData.some(fd => fd.id_lokasi === m._locId)
+                scrollContainer = locationListContainer;
+                scrollContainer.style.position = 'relative';
+
+                contentSpacer = document.createElement('div');
+                contentSpacer.style.position = 'relative';
+                contentSpacer.style.width = '100%';
+
+                cardContainer = document.createElement('div');
+                cardContainer.style.position = 'absolute';
+                cardContainer.style.top = '0';
+                cardContainer.style.left = '0';
+                cardContainer.style.right = '0';
+                cardContainer.className = 'space-y-3 px-0';
+
+                contentSpacer.appendChild(cardContainer);
+                scrollContainer.appendChild(contentSpacer);
+
+                scrollContainer.addEventListener('scroll', onVirtualScroll, { passive: true });
+                virtualScrollActive = true;
+            }
+
+            /**
+             * Render hanya card yang terlihat di viewport.
+             */
+            function renderVisibleCards() {
+                if (!virtualScrollActive || filteredData.length === 0) return;
+
+                const scrollTop = scrollContainer.scrollTop;
+                const viewportHeight = scrollContainer.clientHeight;
+
+                // Hitung range index yang visible
+                const startIdx = Math.max(0, Math.floor(scrollTop / CARD_HEIGHT) - BUFFER_CARDS);
+                const endIdx = Math.min(
+                    filteredData.length,
+                    Math.ceil((scrollTop + viewportHeight) / CARD_HEIGHT) + BUFFER_CARDS
                 );
-                markerClusterGroup.addLayers(filteredMarkers);
 
-                // 2. Update Counter
-                document.getElementById('spots-count').textContent = filteredData.length;
+                // Update total height spacer
+                contentSpacer.style.height = (filteredData.length * CARD_HEIGHT) + 'px';
 
-                // 3. Render List
-                if (filteredData.length === 0) {
-                    locationListContainer.innerHTML = `
-                        <div class="flex flex-col items-center justify-center py-16 text-center select-none">
-                            <span class="text-3xl mb-2">🔍</span>
-                            <p class="text-xs font-bold text-slate-400 font-display">Tidak ada spot yang cocok</p>
-                            <p class="text-[10px] text-slate-400 mt-1">Coba sesuaikan kata kunci atau kategori filter</p>
-                        </div>
-                    `;
-                    return;
-                }
+                // Posisikan card container sesuai offset
+                cardContainer.style.top = (startIdx * CARD_HEIGHT) + 'px';
 
+                // Build HTML hanya untuk card yang visible
                 let html = '';
-                filteredData.forEach(loc => {
+                for (let i = startIdx; i < endIdx; i++) {
+                    const loc = filteredData[i];
                     const style = getCategoryStyle(loc.kategori?.nama_kategori);
-                    const imageUrl = loc.foto_utama ? `{{ asset('storage') }}/` + loc.foto_utama.file_foto : null;
-                    const urlDetail = `{{ url('admin/lokasi') }}/` + loc.id_lokasi;
                     const ratingHtml = loc.rating_avg ? `
                         <div class="flex items-center text-[10px] text-amber-500 font-black flex-shrink-0 select-none">
-                            ★ <span class="text-slate-700 ml-0.5">${loc.rating_avg.toFixed(1)}</span>
+                            ★ <span class="text-slate-700 ml-0.5">${parseFloat(loc.rating_avg).toFixed(1)}</span>
                         </div>
                     ` : '';
 
                     html += `
-                        <div class="location-card bg-white border border-slate-200/50 rounded-2xl p-3 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all duration-300 flex gap-3 group" data-id="${loc.id_lokasi}">
+                        <div class="location-card bg-white border border-slate-200/50 rounded-2xl p-3 shadow-sm hover:shadow-md hover:border-indigo-200 cursor-pointer transition-all duration-300 flex gap-3 group" data-id="${loc.id_lokasi}" style="height:${CARD_HEIGHT - 12}px;">
                             <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative select-none">
-                                ${imageUrl ? `
-                                    <img src="${imageUrl}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
-                                ` : `
-                                    <div class="w-full h-full flex items-center justify-center text-xl bg-slate-50 border border-slate-100" style="background: linear-gradient(135deg, ${style.color}10, ${style.color}25)">
-                                        ${style.initial}
-                                    </div>
-                                `}
+                                <div class="w-full h-full flex items-center justify-center text-xl bg-slate-50 border border-slate-100" style="background: linear-gradient(135deg, ${style.color}10, ${style.color}25)">
+                                    ${style.initial}
+                                </div>
                             </div>
                             <div class="min-w-0 flex-1 flex flex-col justify-between">
                                 <div>
@@ -551,64 +647,163 @@
                                     <span class="text-[8px] font-black px-1.5 py-0.5 rounded-md text-white tracking-wider uppercase select-none" style="background-color: ${style.color}e0">
                                         ${loc.kategori?.nama_kategori || 'Spot'}
                                     </span>
-                                    <a href="${urlDetail}" class="text-[9px] font-extrabold text-slate-500 hover:text-indigo-600 flex items-center gap-0.5 uppercase tracking-wider transition-colors">
+                                    <a href="${DETAIL_BASE_URL}/${loc.id_lokasi}" class="text-[9px] font-extrabold text-slate-500 hover:text-indigo-600 flex items-center gap-0.5 uppercase tracking-wider transition-colors">
                                         Detail ➔
                                     </a>
                                 </div>
                             </div>
                         </div>
                     `;
-                });
+                }
 
-                locationListContainer.innerHTML = html;
+                cardContainer.innerHTML = html;
+                bindCardClickEvents();
+            }
 
-                // Re-bind click event to sidebar cards
-                document.querySelectorAll('.location-card').forEach(card => {
+            function onVirtualScroll() {
+                requestAnimationFrame(renderVisibleCards);
+            }
+
+            /**
+             * Bind click events ke visible cards (delegasi setelah render).
+             */
+            function bindCardClickEvents() {
+                cardContainer.querySelectorAll('.location-card').forEach(card => {
                     card.addEventListener('click', function() {
                         const id = parseInt(this.getAttribute('data-id'));
-                        const loc = lokasiData.find(l => l.id_lokasi === id);
-                        const marker = allMarkers.find(m => m._locId === id);
+                        const loc = lokasiById.get(id);
+                        const marker = markerById.get(id);
 
                         if (loc && marker) {
                             // Active styling highlight
-                            document.querySelectorAll('.location-card').forEach(c => {
+                            cardContainer.querySelectorAll('.location-card').forEach(c => {
                                 c.classList.remove('ring-2', 'ring-indigo-500/20', 'border-indigo-400', 'shadow-md');
                                 c.classList.add('border-slate-200/50');
                             });
                             this.classList.remove('border-slate-200/50');
                             this.classList.add('ring-2', 'ring-indigo-500/20', 'border-indigo-400', 'shadow-md');
 
-                            // Pan to map coordinates
                             map.setView([loc.latitude, loc.longitude], 17, {
                                 animate: true,
                                 duration: 1.2
                             });
 
-                            // Open popup on animation completion
                             setTimeout(() => {
-                                marker.openPopup();
+                                markerClusterGroup.zoomToShowLayer(marker, () => {
+                                    marker.openPopup();
+                                });
                             }, 400);
                         }
                     });
                 });
             }
 
-            // Helper to highlight card on map marker click and scroll it into view
-            function highlightSidebarCard(id) {
-                const card = document.querySelector(`.location-card[data-id="${id}"]`);
-                if (card) {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    document.querySelectorAll('.location-card').forEach(c => {
-                        c.classList.remove('ring-2', 'ring-indigo-500/20', 'border-indigo-400', 'shadow-md');
-                        c.classList.add('border-slate-200/50');
+            // ==========================================
+            // SYNCHRONIZED FILTER & RENDER (with rAF)
+            // ==========================================
+            let filterRafId = null;
+
+            function updateMapAndList() {
+                // Cancel pending rAF to prevent double render
+                if (filterRafId) cancelAnimationFrame(filterRafId);
+
+                filterRafId = requestAnimationFrame(() => {
+                    const query = searchInput.value.toLowerCase().trim();
+                    const checkedIds = [...checkboxes].filter(c => c.checked).map(c => parseInt(c.value));
+
+                    if (query) {
+                        clearSearchBtn.classList.remove('hidden');
+                        clearSearchBtn.classList.add('flex');
+                    } else {
+                        clearSearchBtn.classList.remove('flex');
+                        clearSearchBtn.classList.add('hidden');
+                    }
+
+                    // Filter Data
+                    filteredData = lokasiData.filter(loc => {
+                        const matchesCategory = checkedIds.includes(loc.id_kategori);
+                        const matchesSearch = !query ||
+                            (loc.nama_tempat && loc.nama_tempat.toLowerCase().includes(query)) ||
+                            (loc.alamat && loc.alamat.toLowerCase().includes(query));
+                        return matchesCategory && matchesSearch;
                     });
-                    card.classList.remove('border-slate-200/50');
-                    card.classList.add('ring-2', 'ring-indigo-500/20', 'border-indigo-400', 'shadow-md');
-                }
+
+                    // 1. Rebuild Map Clusters
+                    markerClusterGroup.clearLayers();
+                    const filteredMarkers = allMarkers.filter(m =>
+                        filteredData.some(fd => fd.id_lokasi === m._locId)
+                    );
+                    markerClusterGroup.addLayers(filteredMarkers);
+
+                    // 2. Update Counter
+                    spotsCountEl.textContent = filteredData.length;
+
+                    // 3. Render Sidebar with Virtual Scroll
+                    if (filteredData.length === 0) {
+                        if (virtualScrollActive) {
+                            scrollContainer.removeEventListener('scroll', onVirtualScroll);
+                            virtualScrollActive = false;
+                        }
+                        locationListContainer.innerHTML = `
+                            <div class="flex flex-col items-center justify-center py-16 text-center select-none">
+                                <span class="text-3xl mb-2">🔍</span>
+                                <p class="text-xs font-bold text-slate-400 font-display">Tidak ada spot yang cocok</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Coba sesuaikan kata kunci atau kategori filter</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    if (!virtualScrollActive) {
+                        setupVirtualScroll();
+                    }
+
+                    // Reset scroll ke atas saat filter berubah
+                    scrollContainer.scrollTop = 0;
+                    renderVisibleCards();
+
+                    filterRafId = null;
+                });
             }
 
-            // Event Listeners
-            searchInput.addEventListener('input', updateMapAndList);
+            // ==========================================
+            // SIDEBAR HIGHLIGHT HELPER
+            // ==========================================
+            function highlightSidebarCard(id) {
+                // Cari index lokasi di filteredData
+                const idx = filteredData.findIndex(l => l.id_lokasi === id);
+                if (idx === -1) return;
+
+                // Scroll ke posisi card tersebut
+                const targetScrollTop = idx * CARD_HEIGHT;
+                scrollContainer.scrollTo({
+                    top: targetScrollTop,
+                    behavior: 'smooth'
+                });
+
+                // Setelah scroll selesai, highlight card
+                setTimeout(() => {
+                    const card = cardContainer.querySelector(`.location-card[data-id="${id}"]`);
+                    if (card) {
+                        cardContainer.querySelectorAll('.location-card').forEach(c => {
+                            c.classList.remove('ring-2', 'ring-indigo-500/20', 'border-indigo-400', 'shadow-md');
+                            c.classList.add('border-slate-200/50');
+                        });
+                        card.classList.remove('border-slate-200/50');
+                        card.classList.add('ring-2', 'ring-indigo-500/20', 'border-indigo-400', 'shadow-md');
+                    }
+                }, 350);
+            }
+
+            // ==========================================
+            // EVENT LISTENERS (with debounce)
+            // ==========================================
+            let searchDebounceTimer = null;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(updateMapAndList, 300);
+            });
+
             clearSearchBtn.addEventListener('click', () => {
                 searchInput.value = '';
                 updateMapAndList();
@@ -628,14 +823,17 @@
                 updateMapAndList();
             });
 
-            // Initialize Map Group & Trigger Initial Render
+            // ==========================================
+            // INITIALIZE
+            // ==========================================
             map.addLayer(markerClusterGroup);
+            setupVirtualScroll();
             updateMapAndList();
 
-            // Handle Resize
             window.addEventListener('resize', () => {
                 setTimeout(() => {
                     map.invalidateSize({ animate: true });
+                    renderVisibleCards();
                 }, 200);
             });
         });

@@ -12,7 +12,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 // Redirect /dashboard ke /admin
@@ -55,6 +55,7 @@ Route::middleware(['auth', 'CheckRole:super_admin,admin,operator'])
 
         // GIS & Maps
         Route::get('map', [MapController::class, 'index'])->name('map.index');
+        Route::get('map/lokasi/{id}/popup', [MapController::class, 'popupData'])->name('map.popup');
 
         // Pengaduan
         Route::get('pengaduan', [PengaduanController::class, 'index'])->name('pengaduan.index');
@@ -69,4 +70,4 @@ Route::middleware(['auth', 'CheckRole:super_admin,admin,operator'])
         });
     });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
